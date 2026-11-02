@@ -246,7 +246,7 @@ it, so `./veda-pack --only algpred2` does not invalidate the other entries.
 
 ## The five tools you must fetch yourself
 
-Eight of the thirteen tools download automatically. Five cannot:
+8 of the 11 tools download automatically. Five cannot:
 
 | Tool | Why |
 |---|---|
