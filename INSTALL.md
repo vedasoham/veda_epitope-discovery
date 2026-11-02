@@ -1,7 +1,7 @@
 # Installing VEDA
 
 VEDA is an immuno-epitope analysis pipeline: a Streamlit application that
-drives thirteen external prediction tools across five isolated Python
+drives eleven external prediction tools across five isolated Python
 environments.
 
 ```bash
