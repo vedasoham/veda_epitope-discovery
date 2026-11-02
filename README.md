@@ -10,8 +10,8 @@ Streamlit application with a browser interface; the prediction tools run as
 separate processes in their own pinned environments.
 
 ```bash
-git clone https://github.com/vedasoham/veda_pipeline.git
-cd veda_pipeline
+git clone https://github.com/vedasoham/veda_epitope-discovery.git
+cd veda_epitope-discovery
 ./install.sh
 veda
 ```
@@ -106,15 +106,53 @@ in two halves.
 | [IFNEpitope 2.0](https://github.com/raghavagps/ifnepitope2) | see repository |
 | [Vaxign-ML](https://github.com/VIOLINet/Vaxign-ML-docker) | GPL-3.0 |
 
-**You download these yourself** — free for academic use, one registration form
-each, from DTU Health Tech:
+**You download these five yourself.** They are free for academic use, but DTU
+Health Tech issues a personal, single-use download link after a registration
+form, and the licence does not allow us to pass the programs on — so no script
+can fetch them for you.
 
-NetMHCpan 4.2 · NetMHCIIpan 4.3 · GibbsCluster 2.0 · Seq2Logo 2.2 · DeepLoc 2.1
+Open each page, complete the form, and choose the **Linux x86-64** build:
 
-Their licence is issued per person and does not allow us to pass the programs
-on. **[resources/tools/DTU_TOOLS.md](resources/tools/DTU_TOOLS.md)** walks
-through it: which page, which build, where to put the archive. It takes about
-ten minutes plus however long DTU takes to email the link.
+| Tool | Download page | Unpacks to |
+|---|---|---|
+| NetMHCpan 4.2 | [services.healthtech.dtu.dk/services/NetMHCpan-4.2](https://services.healthtech.dtu.dk/services/NetMHCpan-4.2/) | `netMHCpan-4.2/` |
+| NetMHCIIpan 4.3 | [services.healthtech.dtu.dk/services/NetMHCIIpan-4.3](https://services.healthtech.dtu.dk/services/NetMHCIIpan-4.3/) | `netMHCIIpan-4.3/` |
+| GibbsCluster 2.0 | [services.healthtech.dtu.dk/services/GibbsCluster-2.0](https://services.healthtech.dtu.dk/services/GibbsCluster-2.0/) | `gibbscluster-2.0/` |
+| Seq2Logo 2.2 | [services.healthtech.dtu.dk/services/Seq2Logo-2.0](https://services.healthtech.dtu.dk/services/Seq2Logo-2.0/) | `seq2logo-2.2/` |
+| DeepLoc 2.1 | [services.healthtech.dtu.dk/services/DeepLoc-2.1](https://services.healthtech.dtu.dk/services/DeepLoc-2.1/) | `deeploc-2.1.All/` |
+
+### Where to put them
+
+Leave the archives as they arrived — **do not unpack or rename them** — drop
+them into VEDA's staging directory, and re-run the tools stage:
+
+```bash
+mkdir -p ~/.veda/staging
+mv ~/Downloads/netMHCpan-4.2*.tar.gz ~/.veda/staging/    # and the others
+
+./install.sh --only tools
+```
+
+Do not rename or extract them: the installer finds each archive by name,
+unpacks it into `resources/tools/`, rewrites the installation paths baked into
+its `tcsh` wrappers and `envfile`s, fixes permissions `tar` did not preserve,
+and checks that the data payload arrived and not just the launcher script.
+Unpacking by hand skips all of that.
+
+Already extracted one elsewhere? Move or symlink the folder into
+`resources/tools/` under the directory name in the table above.
+
+NetMHCpan and NetMHCIIpan carry their scoring matrices in a `data/` directory
+*inside* the archive — 190 MB and 125 MB respectively. If a download is
+interrupted and that directory is short, the tool prints a single
+`Unable to open(r) file .../data/version` and then **exits 0 having predicted
+nothing**, which looks like success to anything checking only the exit code.
+The installer refuses to count such a tool as installed, and `veda doctor`
+reports it by name.
+
+**[resources/tools/DTU_TOOLS.md](resources/tools/DTU_TOOLS.md)** has the
+step-by-step version, including what to do when one misbehaves. Budget about
+ten minutes, plus however long DTU takes to email the links.
 
 **VEDA runs without them.** The steps they power are greyed out and everything
 else works. Add them whenever you like and re-run
