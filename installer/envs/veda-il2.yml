@@ -1,0 +1,36 @@
+# VEDA :: IL2Pred environment  (config.IL2PRED_PYTHON)
+#
+# IL2Pred exists on its own interpreter for one reason: its models are the
+# only ones in VEDA pickled by a MODERN scikit-learn, and that makes it
+# mutually exclusive with every other Raghava-lab predictor.
+#
+#   il2pred-main/model{1,2,3}/dpc_len_feat_sel_model.pkl   _sklearn_version 1.5.2
+#
+# scikit-learn 1.3 changed the decision-tree node struct, so pickles do not
+# cross that boundary in either direction:
+#
+#                     sklearn 1.2.x      sklearn >= 1.3
+#     AlgPred2        predicts           ValueError: node array dtype
+#     ToxinPred2      predicts           ValueError: node array dtype
+#     IFNEpitope2     predicts           ValueError: node array dtype
+#     IL2Pred         ValueError         predicts
+#
+# There is therefore no single pin that satisfies all four, which is why
+# IL2Pred is not in veda-tools. 1.5.* matches what the models were saved with;
+# 1.7.2 was also verified to give byte-identical scores, so the pin is a
+# deliberate match rather than a hard floor.
+#
+# BLAST is deliberately absent, as in veda-ifn: il2pred.py does not use it.
+name: veda-il2
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  # See veda-ui.yml: setuptools after 80.x no longer bundles pkg_resources.
+  - setuptools<81
+  # numpy below 2.x to match the rest of VEDA and the pickles' ABI.
+  - numpy=1.26.*
+  - pandas=2.*
+  - joblib
+  - scikit-learn=1.5.*         # load-bearing: see the header. NOT < 1.3.

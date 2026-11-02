@@ -1,0 +1,33 @@
+# VEDA :: IFNEpitope2 environment  (config.IFNEPITOPE_PYTHON)
+#
+# ifnepitope2.py imports numpy, pandas, sklearn, tqdm and pkg_resources
+# (the last from setuptools) -- all four are required, and tqdm/setuptools
+# are easy to miss because they only surface at run time.
+#
+# Kept on a separate interpreter from veda-tools so its scikit-learn pin can
+# move independently. BLAST is deliberately absent: ifnepitope_worker.py
+# resolves blastp from config.TOOL_PYTHON's bin/ (the veda-tools env).
+#
+# scikit-learn is held below 1.3 for the same reason as veda-tools: the
+# bundled forests (model/human_et.pkl, model/mouse_et.pkl) record
+# _sklearn_version 0.24.1, and the node-struct change in 1.3 makes them
+# unloadable by anything newer --
+#   ValueError: node array from the pickle has an incompatible dtype
+# They load and predict correctly on 1.2.x. See veda-tools.yml for the full
+# explanation and the per-tool evidence.
+name: veda-ifn
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  # setuptools<81 is REQUIRED: ifnepitope2.py line 9 is `import pkg_resources`,
+  # and setuptools stopped bundling pkg_resources after 80.x. Without the bound
+  # the solver takes the newest (84.x), and the tool dies with
+  # ModuleNotFoundError: No module named 'pkg_resources'.
+  - setuptools<81
+  - numpy=1.26.*
+  - pandas=2.*
+  - joblib
+  - scikit-learn=1.2.*         # load-bearing: see the header. NOT >= 1.3.
+  - tqdm                       # imported directly by ifnepitope2.py
