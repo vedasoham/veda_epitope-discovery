@@ -104,7 +104,7 @@ veda::_cfg_patch_wrappers() {
     # NetMHCpan 4.2
     f="$VEDA_TOOLS_DIR/netMHCpan-4.2/netMHCpan"
     if [[ -f "$f" ]]; then
-        setenv_patch "$f" NMHOME "$VEDA_TOOLS_DIR/netMHCpan-4.2" && log_ok "patched netMHCpan NMHOME"
+        selfpath_patch "$f" NMHOME && log_ok "netMHCpan NMHOME resolves from the wrapper"
         # TMPDIR sits inside an `if` block, so only patch when the line exists.
         setenv_patch "$f" TMPDIR "$tmpdir" >/dev/null 2>&1 && log_debug "patched netMHCpan TMPDIR"
         chmod u+x "$f"
@@ -115,7 +115,7 @@ veda::_cfg_patch_wrappers() {
     # NetMHCIIpan 4.3
     f="$VEDA_TOOLS_DIR/netMHCIIpan-4.3/netMHCIIpan"
     if [[ -f "$f" ]]; then
-        setenv_patch "$f" NMHOME "$VEDA_TOOLS_DIR/netMHCIIpan-4.3" && log_ok "patched netMHCIIpan NMHOME"
+        selfpath_patch "$f" NMHOME && log_ok "netMHCIIpan NMHOME resolves from the wrapper"
         setenv_patch "$f" TMPDIR "$tmpdir" >/dev/null 2>&1 && log_debug "patched netMHCIIpan TMPDIR"
         chmod u+x "$f"
     else
@@ -125,7 +125,7 @@ veda::_cfg_patch_wrappers() {
     # GibbsCluster 2.0
     f="$VEDA_TOOLS_DIR/gibbscluster-2.0/gibbscluster"
     if [[ -f "$f" ]]; then
-        setenv_patch "$f" GIBBS "$VEDA_TOOLS_DIR/gibbscluster-2.0" && log_ok "patched gibbscluster GIBBS"
+        selfpath_patch "$f" GIBBS && log_ok "gibbscluster GIBBS resolves from the wrapper"
         chmod u+x "$f"
         # Seq2Logo / Rpath are left empty on purpose: the pipeline drives
         # Seq2Logo itself through backend/seq2logo_runner.py, and setting them

@@ -551,6 +551,20 @@ veda::_fix_dtu_binaries() {
     done
     [[ -d "$path/Linux_x86_64/bin" ]] && chmod -R u+x "$path/Linux_x86_64/bin" 2>/dev/null || true
     [[ -d "$path/bin" ]] && chmod -R u+x "$path/bin" 2>/dev/null || true
+
+    # Point the wrapper at its own tree.
+    #
+    # The configure stage does this too, but a freshly unpacked DTU tarball
+    # always carries the vendor's build path, and `--only tools` -- which is
+    # how the licence-gated tools get added after the first install -- does
+    # not run configure. Without this the tool is extracted, reported
+    # installed, and then finds no binaries at run time.
+    local w
+    for w in "$path/netMHCpan" "$path/netMHCIIpan"; do
+        [[ -f "$w" ]] && selfpath_patch "$w" NMHOME >/dev/null 2>&1
+    done
+    [[ -f "$path/gibbscluster" ]] && selfpath_patch "$path/gibbscluster" GIBBS >/dev/null 2>&1
+
     return 0
 }
 

@@ -243,6 +243,63 @@ setenv_patch() {
     log_debug "patched ${f##*/}: $var -> $val"
 }
 
+# selfpath_patch <file> <VAR>  -- rewrite `setenv VAR <frozen path>` in a tcsh
+# wrapper so VAR is derived from the wrapper's own location at run time.
+#
+# The DTU wrappers ship with the vendor's build path baked in, and every
+# install has had to rewrite it to an absolute path of its own. Any rewrite
+# that gets missed -- the tools stage run on its own, a tree moved or renamed
+# after installing, a second checkout patched by a different install -- leaves
+# the tool pointing at a directory that is not there. It then prints one
+# "no binaries found" line and exits 0 having predicted nothing, which reads
+# as success to anything checking only the exit code.
+#
+# Resolving the path at run time removes that failure mode instead of
+# re-patching around it. Idempotent: a wrapper already carrying the block is
+# left alone, so this is safe to call from more than one stage.
+selfpath_patch() {
+    local f=$1 var=$2
+    [[ -f "$f" ]] || { log_warn "cannot patch missing file $f"; return 1; }
+
+    if grep -qF "setenv ${var} \`dirname" "$f"; then
+        log_debug "${f##*/}: $var already resolves from the wrapper location"
+        return 0
+    fi
+
+    grep -qE "^[[:space:]]*setenv[[:space:]]+${var}[[:space:]]" "$f" || {
+        log_warn "no 'setenv $var' line in ${f##*/}; leaving untouched"
+        return 1
+    }
+
+    backup_once "$f"
+
+    local block
+    block=$(printf '%s\n' \
+        "# VEDA: resolved from this wrapper's own location, so the tree can be" \
+        "# moved, renamed or cloned without re-running the installer." \
+        'set _veda_self = `readlink -f "$0"`' \
+        'if ( "$_veda_self" == "" ) set _veda_self = "$0"' \
+        "setenv ${var} \`dirname \"\$_veda_self\"\`")
+
+    local tmp
+    tmp=$(mktemp "${TMPDIR:-/tmp}/veda-selfpath.XXXXXX") || return 1
+
+    awk -v var="$var" -v block="$block" '
+        !seen && $0 ~ "^[[:space:]]*setenv[[:space:]]+" var "[[:space:]]" {
+            print block
+            seen = 1
+            next
+        }
+        { print }
+    ' "$f" >"$tmp" || { rm -f "$tmp"; return 1; }
+
+    # Copy through the existing file rather than mv, so the inode, ownership
+    # and the execute bit survive.
+    cat "$tmp" >"$f" || { rm -f "$tmp"; return 1; }
+    rm -f "$tmp"
+    log_debug "patched ${f##*/}: $var now resolves from the wrapper location"
+}
+
 # strip_mac_cruft <dir>  -- AppleDouble/._* files make several of these tools
 # choke (they get globbed as input). Safe to run repeatedly.
 strip_mac_cruft() {
