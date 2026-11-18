@@ -5,8 +5,8 @@ drives eleven external prediction tools across five isolated Python
 environments.
 
 ```bash
-git clone https://github.com/vedasoham/veda_pipeline.git
-cd veda_pipeline
+git clone https://github.com/vedasoham/veda_epitope-discovery.git
+cd veda_epitope-discovery
 ./install.sh
 ```
 

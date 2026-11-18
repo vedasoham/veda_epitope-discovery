@@ -5,8 +5,8 @@ prediction programs VEDA drives are **not** in the repository; the installer
 puts them here. This page explains why, and what you need to do.
 
 ```
-git clone https://github.com/vedasoham/veda_pipeline.git
-cd veda_pipeline
+git clone https://github.com/vedasoham/veda_epitope-discovery.git
+cd veda_epitope-discovery
 ./install.sh          # fetches what it can, tells you what it cannot
 ```
 
