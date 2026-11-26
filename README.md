@@ -113,13 +113,52 @@ can fetch them for you.
 
 Open each page, complete the form, and choose the **Linux x86-64** build:
 
-| Tool | Download page | Unpacks to |
-|---|---|---|
-| NetMHCpan 4.2 | [services.healthtech.dtu.dk/services/NetMHCpan-4.2](https://services.healthtech.dtu.dk/services/NetMHCpan-4.2/) | `netMHCpan-4.2/` |
-| NetMHCIIpan 4.3 | [services.healthtech.dtu.dk/services/NetMHCIIpan-4.3](https://services.healthtech.dtu.dk/services/NetMHCIIpan-4.3/) | `netMHCIIpan-4.3/` |
-| GibbsCluster 2.0 | [services.healthtech.dtu.dk/services/GibbsCluster-2.0](https://services.healthtech.dtu.dk/services/GibbsCluster-2.0/) | `gibbscluster-2.0/` |
-| Seq2Logo 2.2 | [services.healthtech.dtu.dk/services/Seq2Logo-2.0](https://services.healthtech.dtu.dk/services/Seq2Logo-2.0/) | `seq2logo-2.2/` |
-| DeepLoc 2.1 | [services.healthtech.dtu.dk/services/DeepLoc-2.1](https://services.healthtech.dtu.dk/services/DeepLoc-2.1/) | `deeploc-2.1.All/` |
+| Tool | Download page | Unpacks to | Tested against |
+|---|---|---|---|
+| NetMHCpan 4.2 | [services.healthtech.dtu.dk/services/NetMHCpan-4.2](https://services.healthtech.dtu.dk/services/NetMHCpan-4.2/) | `netMHCpan-4.2/` | **4.2b** |
+| NetMHCIIpan 4.3 | [services.healthtech.dtu.dk/services/NetMHCIIpan-4.3](https://services.healthtech.dtu.dk/services/NetMHCIIpan-4.3/) | `netMHCIIpan-4.3/` | **4.3i** |
+| GibbsCluster 2.0 | [services.healthtech.dtu.dk/services/GibbsCluster-2.0](https://services.healthtech.dtu.dk/services/GibbsCluster-2.0/) | `gibbscluster-2.0/` | **2.0e** |
+| Seq2Logo 2.2 | [services.healthtech.dtu.dk/services/Seq2Logo-2.0](https://services.healthtech.dtu.dk/services/Seq2Logo-2.0/) | `seq2logo-2.2/` | **2.2** (3 Jun 2025) |
+| DeepLoc 2.1 | [services.healthtech.dtu.dk/services/DeepLoc-2.1](https://services.healthtech.dtu.dk/services/DeepLoc-2.1/) | `deeploc-2.1.All/` | **2.1** (package 1.0.0) |
+
+### Check the version you were sent
+
+DTU ships whatever sub-release is current — the letter after the version number,
+as in 4.3**i** — and the download form gives you no way to ask for an older one.
+So the right-hand column above is not something you can select. It is what to
+compare against when a tool misbehaves.
+
+After unpacking, check what actually arrived:
+
+```bash
+cat resources/tools/netMHCpan-4.2/data/version      # NetMHCpan version 4.2b
+cat resources/tools/netMHCIIpan-4.3/data/version    # NetMHCIIpan version 4.3i
+ls  resources/tools/gibbscluster-2.0/*.pl           # GibbsCluster-2.0e_SA.pl
+```
+
+A newer letter usually works. When it does not, the reason is almost always
+that DTU moved the helper binaries. VEDA's tested builds keep them in
+`<tool>/Linux_x86_64/bin/` with a `_v2` suffix; at least one later release
+(NetMHCIIpan **4.3k**) expects them in a plain `<tool>/bin/` and bumps them to
+`_v3`. The wrapper still starts, so the run looks healthy until every
+prediction fails with:
+
+```
+sh: 1: .../netMHCIIpan-4.3/bin/estimate_PCC: not found
+```
+
+Check whether the binaries are simply in the other directory, and if they are,
+one symlink is the whole fix:
+
+```bash
+ls resources/tools/netMHCIIpan-4.3/Linux_x86_64/bin/      # are they here?
+cd resources/tools/netMHCIIpan-4.3 && ln -s Linux_x86_64/bin bin
+```
+
+If that directory is empty or missing the helper, the archive is incomplete and
+the download has to be repeated. Please also
+[open an issue](https://github.com/vedasoham/veda_epitope-discovery/issues) with
+the version string, so the table above can be updated.
 
 ### Where to put them
 
