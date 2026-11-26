@@ -28,6 +28,12 @@ def run(fasta_path, output_dir, alleles="HLA-A02:01", length=9, tool_path=None, 
     """
     start_time = time.time()
     fasta_name = Path(fasta_path).name
+
+    # This worker drives both class I and class II, distinguished the same way
+    # the env and argument handling below do it. Without this, a NetMHCIIpan
+    # failure reports itself as "NetMHCpan Failed" and sends you to the wrong
+    # tool, the wrong wrapper and the wrong log.
+    tool_label = "NetMHCIIpan" if "netmhciipan" in str(tool_path).lower() else "NetMHCpan"
     
     # Extract batch info for display
     batch_display = fasta_name
@@ -50,7 +56,7 @@ def run(fasta_path, output_dir, alleles="HLA-A02:01", length=9, tool_path=None, 
     output_dir.mkdir(parents=True, exist_ok=True)
     
     if not tool_path or not Path(tool_path).exists():
-        log(f"❌ Error: NetMHCpan binary not found at {tool_path}")
+        log(f"❌ Error: {tool_label} binary not found at {tool_path}")
         return False
 
     # Check input file
@@ -192,7 +198,7 @@ def run(fasta_path, output_dir, alleles="HLA-A02:01", length=9, tool_path=None, 
             full_output = "\n".join(final_stdout)
             
             if not full_output.strip():
-                log("❌ NetMHCpan Job Failed: Output is empty.")
+                log(f"❌ {tool_label} Job Failed: Output is empty.")
                 # Log stderr from chunks to help diagnose silent failures
                 for i, (rc, out, err, cmd_used) in enumerate(results):
                     if err and err.strip():
@@ -200,7 +206,7 @@ def run(fasta_path, output_dir, alleles="HLA-A02:01", length=9, tool_path=None, 
                 return False
                 
             if "Pos" not in full_output or "MHC" not in full_output:
-                log("❌ NetMHCpan Job Failed: Output contains no valid predictions.")
+                log(f"❌ {tool_label} Job Failed: Output contains no valid predictions.")
                 log("   ⚠️ DIAGNOSIS: The tool skipped all peptides.")
                 log("   ⚠️ ACTION: Ensure your sequences contain only standard amino acids and meet minimum length requirements.")
                 log(f"   ⚠️ Raw Output Snippet:\n{full_output.strip()[:1000]}")
@@ -216,7 +222,7 @@ def run(fasta_path, output_dir, alleles="HLA-A02:01", length=9, tool_path=None, 
             log(f"   ✅ Finished in {time_str}")
             return True
         else:
-            log(f"❌ NetMHCpan Failed: {errors} chunks failed.")
+            log(f"❌ {tool_label} Failed: {errors} chunks failed.")
             return False
 
     except Exception as e:

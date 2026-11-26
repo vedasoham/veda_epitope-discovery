@@ -151,6 +151,16 @@ veda::_tool_data_ok() {
         netmhciipan)
             [[ -s "$path/data/version" ]] || missing+=("data/")
             ;;
+        gibbscluster)
+            # GibbsCluster reads its BLOSUM frequency matrix from $bin/data at
+            # run time (GibbsCluster-2.0e_SA.pl line 226, via $ddir). Without
+            # it the perl script prints "Unable to open(r) file
+            # .../data/blosum62.freq_rownorm" once per clustering round, then
+            # hits "Illegal division by zero" while scoring, then **exits 0**
+            # -- so an installation missing this one file is indistinguishable
+            # from a successful run that happened to find no clusters.
+            [[ -s "$path/data/blosum62.freq_rownorm" ]] || missing+=("data/blosum62.freq_rownorm")
+            ;;
         *) return 0 ;;
     esac
 
@@ -473,7 +483,8 @@ veda::_tool_repair() {
     # Tool-specific fix-ups.
     case "$id" in
         ifnepitope2) veda::_fix_ifnepitope "$path" ;;
-        algpred2)    veda::_fix_blastdb "$path" "Database/data" ;;
+        algpred2)    veda::_fix_blastdb "$path" "Database/data"
+                     veda::_fix_algpred_numeric "$path" ;;
         toxinpred2)  veda::_fix_blastdb "$path" "Database/data" ;;
         il2pred)     veda::_fix_merci "$path/merci" ;;
         netmhcpan|netmhciipan|gibbscluster) veda::_fix_dtu_binaries "$path" ;;
@@ -541,6 +552,77 @@ veda::_fix_merci() {
     return 0
 }
 
+# AlgPred 2.0 builds its three score columns by writing intermediate CSVs and
+# reading them back. Whenever a cell in one of them is not numeric -- a stray
+# token in the MERCI output, or NaN padding where a sequence produced a
+# different number of motif hits than its neighbours -- pandas infers object
+# dtype for the whole column, and the sum that produces the hybrid score then
+# raises
+#
+#   TypeError: can only concatenate str (not "float") to str
+#
+# from inside nanops.nansum, leaving no output file at all. The three columns
+# are numeric by definition, so coercing them is a restoration of intent
+# rather than a behaviour change: a cell that was already a number is
+# untouched, and one that was never a number could not have contributed a
+# meaningful score anyway.
+veda::_fix_algpred_numeric() {
+    local path=$1
+    local f="$path/algpred2.py"
+    [[ -f "$f" ]] || return 0
+
+    if grep -q "VEDA: keep the score columns numeric" "$f"; then
+        log_debug "algpred2.py already coerces its score columns"
+        return 0
+    fi
+
+    # Any interpreter will do: the patch below is stdlib text editing, so this
+    # must not depend on the conda environments existing yet.
+    local py="" cand=""
+    if declare -F env_python >/dev/null 2>&1; then
+        cand=$(env_python veda-tools 2>/dev/null || true)
+        [[ -n "$cand" && -x "$cand" ]] && py="$cand"
+    fi
+    [[ -n "$py" ]] || py=$(command -v python3 || true)
+    [[ -n "$py" ]] || { log_warn "no python available to patch algpred2.py"; return 0; }
+
+    backup_once "$f"
+
+    "$py" - "$f" <<'PYFIX' || { log_warn "could not patch algpred2.py"; return 0; }
+import io, sys
+p = sys.argv[1]
+s = io.open(p, encoding="utf-8").read()
+
+hunks = [(
+    "    df5 = df5[['Name','Hits']]\n"
+    "    df5.columns = ['Subject','Hits']\n",
+    "    df5 = df5[['Name','Hits']]\n"
+    "    df5.columns = ['Subject','Hits']\n"
+    "    # VEDA: keep the score columns numeric -- read_csv infers object dtype\n"
+    "    # for Hits as soon as one cell is non-numeric, and the comparison below\n"
+    "    # then raises instead of scoring.\n"
+    "    df5['Hits'] = pd.to_numeric(df5['Hits'], errors='coerce').fillna(0)\n",
+), (
+    "    df8.fillna(0, inplace=True)\n",
+    "    # VEDA: keep the score columns numeric before summing them.\n"
+    "    for _veda_col in ('ML Score', 'MERCI Score', 'BLAST Score'):\n"
+    "        if _veda_col in df8.columns:\n"
+    "            df8[_veda_col] = pd.to_numeric(df8[_veda_col], errors='coerce')\n"
+    "    df8.fillna(0, inplace=True)\n",
+)]
+
+for old, new in hunks:
+    if s.count(old) != 1:
+        sys.exit("expected exactly one occurrence of:\n" + old)
+    s = s.replace(old, new)
+
+io.open(p, "w", encoding="utf-8").write(s)
+PYFIX
+
+    log_ok "algpred2.py: score columns coerced to numeric before summing"
+    return 0
+}
+
 veda::_fix_dtu_binaries() {
     local path=$1
     # DTU tarballs frequently lose the execute bit in transit.
@@ -564,6 +646,24 @@ veda::_fix_dtu_binaries() {
         [[ -f "$w" ]] && selfpath_patch "$w" NMHOME >/dev/null 2>&1
     done
     [[ -f "$path/gibbscluster" ]] && selfpath_patch "$path/gibbscluster" GIBBS >/dev/null 2>&1
+
+    # Follow DTU's helper binaries when they move between sub-releases.
+    #
+    # NetMHCpan 4.2b and NetMHCIIpan 4.3i keep estimate_PCC and the nnalign
+    # helper in <tool>/Linux_x86_64/bin/. NetMHCIIpan 4.3k expects them in a
+    # plain <tool>/bin/ instead. The wrapper itself still starts -- it only
+    # looks for the top-level binary, which did not move -- so the run appears
+    # healthy right up to the point where every prediction fails with:
+    #
+    #   sh: 1: .../netMHCIIpan-4.3/bin/estimate_PCC: not found
+    #
+    # A symlink satisfies both layouts. The -e test keeps this away from
+    # GibbsCluster, which ships a real bin/ of its own.
+    if [[ ! -e "$path/bin" && -d "$path/Linux_x86_64/bin" ]]; then
+        if ln -s Linux_x86_64/bin "$path/bin" 2>/dev/null; then
+            log_debug "${path##*/}: linked bin -> Linux_x86_64/bin"
+        fi
+    fi
 
     return 0
 }

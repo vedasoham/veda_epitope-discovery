@@ -64,6 +64,21 @@ def run(fasta_path, output_dir, organism_type="g+", sudo_password=None, progress
     log(f"📂 Output Directory: {output_dir}", log_file)
     log(f"📝 Log File: {log_file}", log_file)
     
+    # Vaxign-ML runs out of a bind-mounted host directory. When that directory
+    # is absent, Docker silently creates it empty instead of failing, so the
+    # container starts in an empty working directory and the only symptom is
+    # "python3.6: can't open file 'virus_predict.py'" -- which looks like a
+    # container problem and is really a missing install. Check it here, where
+    # the message can say what actually went wrong.
+    entry = "virus_predict.py" if organism_type == "virus" else config.VAXIGN_SCRIPT
+    entry_path = config.VAXIGN_DIR / entry if organism_type == "virus" else Path(str(entry))
+    if not config.VAXIGN_DIR.is_dir() or not entry_path.is_file():
+        log(f"\u274c Vaxign-ML is not installed: {entry_path} not found.", log_file)
+        log("   The tools stage fetches it from github.com/VIOLINet/Vaxign-ML-docker.", log_file)
+        log("   Re-run it and watch for a 'Vaxign-ML -- download failed' line:", log_file)
+        log("     ./install.sh --only tools", log_file)
+        return False
+
     cmd = []
     if organism_type == "virus":
         if sudo_password:
