@@ -547,7 +547,12 @@ def render_publication_figures():
         
         # Helper to safely get counts
         input_count = counts.get("Input", "N/A")
-        fragpipe_count = input_count if isinstance(input_count, int) else 450
+        # Fall back to 0, never to a plausible-looking number. This value is the
+        # "Filtered Input Peptides" bar of Figure 10, which is downloaded as a
+        # publication figure, and 450 was indistinguishable from a real count
+        # once the PNG left this screen. Figure 1 and antigenic_count below
+        # already fall back to 0; this is the same contract.
+        fragpipe_count = input_count if isinstance(input_count, int) else 0
 
         # Figure 1: Peptide Statistics
         # Get total peptides from fragpipe Excel file

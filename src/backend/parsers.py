@@ -193,6 +193,24 @@ def parse_il2pred_results(file_path):
         print(f"❌ Parse Error (IL2Pred): {e}")
         return pd.DataFrame()
 
+def parse_il4pred_results(file_path):
+    """
+    Parses IL4Pred 2.0 CSV output.
+
+    ui_logic.render_il4pred_results has called this since it was written, but it
+    was never defined -- the renderer raised AttributeError the moment it ran.
+    It had no callers, so nothing surfaced it. The format is the same
+    Seq_ID/Prediction CSV the other Raghava tools emit, so this mirrors
+    parse_il2pred_results rather than inventing a second dialect.
+    """
+    try:
+        df = pd.read_csv(file_path)
+        df.columns = df.columns.str.strip()
+        return df
+    except Exception as e:
+        print(f"❌ Parse Error (IL4Pred): {e}")
+        return pd.DataFrame()
+
 def parse_ifnepitope_results(file_path):
     """
     Parses IFNEpitope CSV output.

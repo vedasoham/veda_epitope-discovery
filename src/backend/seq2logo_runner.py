@@ -135,6 +135,10 @@ def run_seq2logo(gibbscluster_base_dir, output_subdir="logos"):
     if not seq2logo_path.exists():
         print(f"❌ ERROR: Seq2Logo.py not found at: {seq2logo_path}")
         return {"success": False, "error": "Seq2Logo.py not found"}
+
+    seq2logo_python = str(getattr(config, "SEQ2LOGO_PYTHON", "") or "") if config else ""
+    if not seq2logo_python or not Path(seq2logo_python).exists():
+        seq2logo_python = sys.executable
     
     # Create output directory for logos
     output_dir = run_dir / output_subdir
@@ -198,7 +202,16 @@ def run_seq2logo(gibbscluster_base_dir, output_subdir="logos"):
                 
                 # Build Seq2Logo command
                 cmd = [
-                    "python", str(seq2logo_path),
+                    # A named interpreter, never a bare "python": Seq2Logo.py
+                    # is run as a script and needs NumPy >= 1.19. "python" only
+                    # resolved because the launcher happens to put the veda-ui
+                    # env first on PATH -- outside it, including the standalone
+                    # invocation this module's own docstring documents, a stock
+                    # Ubuntu 24.04 has no "python" at all and the call died with
+                    # FileNotFoundError. sys.executable is the fallback rather
+                    # than the answer: it is only correct while this module is
+                    # called from a numpy-bearing env (see config.SEQ2LOGO_PYTHON).
+                    seq2logo_python, str(seq2logo_path),
                     "-f", temp_fasta.name,
                     "-o", str(output_file),
                     "-I", "2",           # Kullback-Leibler divergence

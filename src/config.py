@@ -163,6 +163,20 @@ NETMHCIIPAN_BIN = NETMHCIIPAN_DIR / "Linux_x86_64/bin/NetMHCIIpan-4.3"
 GIBBSCLUSTER_DIR = PROJECT_ROOT / "resources/tools/gibbscluster-2.0"
 GIBBSCLUSTER_SCRIPT = GIBBSCLUSTER_DIR / "GibbsCluster-2.0e_SA.pl"
 
+# [Seq2Logo 2.2] Draws the motif logos for GibbsCluster's cores.
+#
+# No environment of its own: its entire third-party dependency is numpy
+# (>= 1.19 per its readme), plus the system Ghostscript binary, and none of
+# that conflicts with anything else -- unlike IL2Pred, which genuinely cannot
+# share TOOL_PYTHON. It is named here anyway rather than left to
+# sys.executable, because seq2logo_runner is imported in-process: run from the
+# DeepTMHMM path, sys.executable would be veda-tmhmm, which has no numpy, and
+# Seq2Logo would fail on `import numpy` with nothing to suggest the
+# interpreter rather than the tool was wrong.
+SEQ2LOGO_DIR = PROJECT_ROOT / "resources/tools/seq2logo-2.2"
+SEQ2LOGO_SCRIPT = SEQ2LOGO_DIR / "Seq2Logo.py"
+SEQ2LOGO_PYTHON = TOOL_PYTHON
+
 # [AlgPred 2.0]
 ALGPRED_DIR = PROJECT_ROOT / "resources/tools/algpred2"
 ALGPRED_SCRIPT = ALGPRED_DIR / "algpred2.py"
