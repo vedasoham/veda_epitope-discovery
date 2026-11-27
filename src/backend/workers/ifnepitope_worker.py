@@ -47,15 +47,37 @@ import sys
 import pandas as pd
 import os
 
-# Monkey-patch DataFrame.append if missing (Pandas 2.0+)
-if not hasattr(pd.DataFrame, 'append'):
+# Monkey-patch DataFrame.append, which pandas removed in 2.0.
+#
+# This has to reproduce pandas 1.5 semantics, not merely forward to concat():
+# when `other` was a list that did not hold DataFrames, pandas wrapped it in
+# DataFrame(other) first. Leaving that step out makes every
+#     df.append(other_df.values.tolist())
+# raise the TypeError "cannot concatenate object of type list; only Series and
+# DataFrame objs are valid", which reads like a bug in the tool and is really a
+# gap in this shim. IFNepitope2 began calling append that way upstream, and the
+# failure reached two separate bug reports before it was traced back to here.
+if not hasattr(pd.DataFrame, "append"):
     def append(self, other, ignore_index=False, verify_integrity=False, sort=False):
-        from pandas import concat
-        if isinstance(other, (list, tuple)):
-            to_concat = [self] + list(other)
-        else:
-            to_concat = [self, other]
-        return concat(to_concat, ignore_index=ignore_index, verify_integrity=verify_integrity, sort=sort)
+        from pandas import DataFrame, Index, Series, concat
+        if isinstance(other, dict):
+            if not ignore_index:
+                raise TypeError("Can only append a dict if ignore_index=True")
+            other = Series(other)
+        if isinstance(other, Series):
+            if other.name is None and not ignore_index:
+                raise TypeError("Can only append a Series if ignore_index=True"
+                                " or if the Series has a name")
+            index = Index([other.name], name=self.index.name)
+            other = other.to_frame().T.infer_objects().rename_axis(index.names)
+        elif isinstance(other, (list, tuple)):
+            if len(other) and not isinstance(other[0], DataFrame):
+                other = DataFrame(other)
+                if self.index.name is not None and not ignore_index:
+                    other.index.name = self.index.name
+        parts = [self, *other] if isinstance(other, (list, tuple)) else [self, other]
+        return concat(parts, ignore_index=ignore_index,
+                      verify_integrity=verify_integrity, sort=sort)
     pd.DataFrame.append = append
 
 target_script = "ifnepitope2.py"
