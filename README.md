@@ -23,7 +23,7 @@ veda
 ## What it does
 
 | Step | Uses | Question it answers |
-|---|---|---|
+|:---:|:---:|:---:|
 | Upload & filter | — | which peptides and source proteins are worth carrying forward? |
 | MHC class-I binding | NetMHCpan 4.2 | will this peptide be presented on class I? |
 | MHC class-II binding | NetMHCIIpan 4.3 | and on class II? |
@@ -98,7 +98,7 @@ in two halves.
 **Fetched automatically** — cloned from the authors' own repositories:
 
 | Tool | Licence |
-|---|---|
+|:---:|:---:|
 | [AlgPred 2.0](https://github.com/raghavagps/algpred2) | GPL-3.0 |
 | [ToxinPred 2.0](https://github.com/raghavagps/toxinpred2) | GPL-3.0 |
 | [IL2Pred](https://github.com/raghavagps/il2pred) | see repository |
@@ -114,12 +114,12 @@ can fetch them for you.
 Open each page, complete the form, and choose the **Linux x86-64** build:
 
 | Tool | Download page | Unpacks to | Tested against |
-|---|---|---|---|
-| NetMHCpan 4.2 | [services.healthtech.dtu.dk/services/NetMHCpan-4.2](https://services.healthtech.dtu.dk/services/NetMHCpan-4.2/) | `netMHCpan-4.2/` | **4.2b** |
-| NetMHCIIpan 4.3 | [services.healthtech.dtu.dk/services/NetMHCIIpan-4.3](https://services.healthtech.dtu.dk/services/NetMHCIIpan-4.3/) | `netMHCIIpan-4.3/` | **4.3i** |
-| GibbsCluster 2.0 | [services.healthtech.dtu.dk/services/GibbsCluster-2.0](https://services.healthtech.dtu.dk/services/GibbsCluster-2.0/) | `gibbscluster-2.0/` | **2.0e** |
-| Seq2Logo 2.2 | [services.healthtech.dtu.dk/services/Seq2Logo-2.0](https://services.healthtech.dtu.dk/services/Seq2Logo-2.0/) | `seq2logo-2.2/` | **2.2** (3 Jun 2025) |
-| DeepLoc 2.1 | [services.healthtech.dtu.dk/services/DeepLoc-2.1](https://services.healthtech.dtu.dk/services/DeepLoc-2.1/) | `deeploc-2.1.All/` | **2.1** (package 1.0.0) |
+|:---|:---:|:---:|:---:|
+| NetMHCpan 4.2 | [DTU NetMHCpan 4.2f Download](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=netMHCpan&version=4.2&packageversion=4.2f&platform=Linux) | `netMHCpan-4.2/` | **4.2f** |
+| NetMHCIIpan 4.3 | [DTU NetMHCpan 4.3k Download](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=netMHCIIpan&version=4.3&packageversion=4.3k&platform=Linux) | `netMHCIIpan-4.3/` | **4.3k** |
+| GibbsCluster 2.0 | [DTU GibbsCluster 2.0f Download](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=gibbscluster&version=2.0&packageversion=2.0f&platform=Linux) | `gibbscluster-2.0/` | **2.0f** |
+| Seq2Logo 2.2 | [DTU Seq2Logo 2.2b Download](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=seq2logo&version=2.2&packageversion=2.2b&platform=all) | `seq2logo-2.2/` | **2.2b** |
+| DeepLoc 2.1 | [DTU DeepLoc 2.1 Download](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=deeploc&version=2.1&packageversion=2.1&platform=All) | `deeploc-2.1.All/` | **2.1** |
 
 ### Check the version you were sent
 
@@ -200,11 +200,11 @@ else works. Add them whenever you like and re-run
 ## Using it
 
 ```bash
-veda                 # start the web interface
-veda doctor          # check every tool, running each on a real input
-veda doctor --system # profile the machine
-veda paths           # show resolved interpreter and tool paths
-veda shell           # a shell inside VEDA's main environment
+veda                   # start the web interface
+veda doctor            # check every tool, running each on a real input
+veda doctor --system   # profile the machine
+veda paths             # show resolved interpreter and tool paths
+veda shell             # a shell inside VEDA's main environment
 veda --help
 ```
 
@@ -225,12 +225,12 @@ enabling that step.
 Only these paths:
 
 ```
-~/.veda/                      environments, caches, logs, state
-~/.local/bin/veda             launcher symlink
-~/.local/share/applications/  desktop entry
-<repo>/resources/tools/       the tools themselves
-<repo>/veda_paths.json        generated machine-local paths
-~/.bashrc                     one guarded PATH line, only if you agree
+~/.veda/                        environments, caches, logs, state
+~/.local/bin/veda               launcher symlink
+~/.local/share/applications/    desktop entry
+<repo>/resources/tools/         the tools themselves
+<repo>/veda_paths.json          generated machine-local paths
+~/.bashrc                       one guarded PATH line, only if you agree
 ```
 
 Tool files that are rewritten are backed up next to the original as
@@ -269,7 +269,7 @@ and version 1.3 changed the decision-tree node struct so that a forest cannot
 cross that boundary in either direction.
 
 | Environment | scikit-learn | Tools (and the version that pickled their models) |
-|---|---|---|
+|:---|:---:|:---|
 | `veda-tools` | 1.2 | AlgPred2 (0.19.2), ToxinPred2 (0.22), IL4Pred2 (0.24.1) |
 | `veda-ifn` | 1.2 | IFNEpitope2 (0.24.1) |
 | `veda-il2` | 1.5 | IL2Pred (1.5.2) |
@@ -291,12 +291,12 @@ checking that it responds to `-h`.
 
 VEDA was developed at **Gujarat Biotechnology University**.
 
-| | |
-|---|---|
-| Soham Bhatt | development |
-| Arpita Tiwari | development |
-| Dr Dhaval Patel | supervision |
-| Dr Ritesh Kumar | supervision |
+|AUTHOR|CONTRIBUTION |
+|:---|:---|
+| Soham Bhatt | Development and Maintenance |
+| Arpita Tiwari | Conceptualization and Testing |
+| Dr Dhaval Patel | Bioinformatics Expert |
+| Dr Ritesh Kumar | Domain Expert |
 
 ## Citing
 
