@@ -94,10 +94,16 @@ missing. `veda doctor` detects this case by name, and the installer no longer
 counts a tool as installed when only its launcher script is present.
 
 **`*** buffer overflow detected ***`.** These programs store their scratch
-directory path in a fixed 64-byte buffer. VEDA points them at
-`$VEDA_HOME/tmp`, so a deep `VEDA_HOME` overflows it: 63 characters works, 64
-aborts. Reinstall with something short — the default `~/.veda` is 15
-characters. The installer checks this before downloading anything.
+directory path in a fixed-size buffer, and the size differs between
+sub-releases: NetMHCpan 4.2b accepted a `TMPDIR` of 63 characters, 4.2f only
+33. NetMHCIIpan 4.3k showed no limit at 70. Only `TMPDIR` is measured — the
+input file may sit at any depth.
+
+`./install.sh --only configure` points the NetMHCpan and NetMHCIIpan wrappers
+at `/tmp` whenever `$VEDA_HOME/tmp` would exceed 33 characters, and says so, so
+a deep `VEDA_HOME` no longer breaks them. The default `~/.veda` is well inside
+the limit. If you set `TMPDIR` yourself, keep it short: past the limit every
+prediction aborts, and the message names neither the tool nor the path.
 
 **The installer did not find your archive.** It matches on the tool name
 appearing somewhere in the filename, case-insensitively, for `.tar.gz`,

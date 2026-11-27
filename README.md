@@ -113,52 +113,84 @@ can fetch them for you.
 
 Open each page, complete the form, and choose the **Linux x86-64** build:
 
-| Tool | Download page | Unpacks to | Tested against |
+| Tool | Download page | Unpacks to | Verified working |
 |:---|:---:|:---:|:---:|
 | NetMHCpan 4.2 | [DTU NetMHCpan 4.2f Download](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=netMHCpan&version=4.2&packageversion=4.2f&platform=Linux) | `netMHCpan-4.2/` | **4.2f** |
-| NetMHCIIpan 4.3 | [DTU NetMHCpan 4.3k Download](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=netMHCIIpan&version=4.3&packageversion=4.3k&platform=Linux) | `netMHCIIpan-4.3/` | **4.3k** |
+| NetMHCIIpan 4.3 | [DTU NetMHCIIpan 4.3k Download](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=netMHCIIpan&version=4.3&packageversion=4.3k&platform=Linux) | `netMHCIIpan-4.3/` | **4.3k** |
 | GibbsCluster 2.0 | [DTU GibbsCluster 2.0f Download](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=gibbscluster&version=2.0&packageversion=2.0f&platform=Linux) | `gibbscluster-2.0/` | **2.0f** |
 | Seq2Logo 2.2 | [DTU Seq2Logo 2.2b Download](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=seq2logo&version=2.2&packageversion=2.2b&platform=all) | `seq2logo-2.2/` | **2.2b** |
 | DeepLoc 2.1 | [DTU DeepLoc 2.1 Download](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=deeploc&version=2.1&packageversion=2.1&platform=All) | `deeploc-2.1.All/` | **2.1** |
 
-### Check the version you were sent
+### Check what you were sent
 
-DTU ships whatever sub-release is current — the letter after the version number,
-as in 4.3**i** — and the download form gives you no way to ask for an older one.
-So the right-hand column above is not something you can select. It is what to
-compare against when a tool misbehaves.
+The links above pin the exact sub-release through the request form's
+`packageversion` parameter, so the right-hand column is a shopping list: follow
+the link and you get the build VEDA was verified against, not merely whichever
+one is current. Each of those builds passes the test suite shipped in its own
+`test/` directory on a clean install.
 
-After unpacking, check what actually arrived:
+Should DTU retire one, its download page will serve a newer letter instead. That
+usually works; the next section covers it when it does not.
+
+After the tools stage, check what arrived:
 
 ```bash
-cat resources/tools/netMHCpan-4.2/data/version      # NetMHCpan version 4.2b
-cat resources/tools/netMHCIIpan-4.3/data/version    # NetMHCIIpan version 4.3i
+cat resources/tools/netMHCpan-4.2/data/version      # NetMHCpan version 4.2f
+cat resources/tools/netMHCIIpan-4.3/data/version    # NetMHCIIpan version 4.3k
 ls  resources/tools/gibbscluster-2.0/*.pl           # GibbsCluster-2.0e_SA.pl
 ```
 
-A newer letter usually works. When it does not, the reason is almost always
-that DTU moved the helper binaries. VEDA's tested builds keep them in
-`<tool>/Linux_x86_64/bin/` with a `_v2` suffix; at least one later release
-(NetMHCIIpan **4.3k**) expects them in a plain `<tool>/bin/` and bumps them to
-`_v3`. The wrapper still starts, so the run looks healthy until every
-prediction fails with:
+GibbsCluster 2.0**f** still ships a script named `GibbsCluster-2.0e_SA.pl`. That
+is DTU's own version skew, not a bad download.
+
+### When a newer sub-release misbehaves
+
+Two failure modes have been seen. The installer handles both; they are
+documented here because each one looks like something else.
+
+**Helper binaries the main binary cannot find.** NetMHCpan 4.2f and NetMHCIIpan
+4.3k ship their helpers in `<tool>/Linux_x86_64/bin/`, but the compiled main
+binary builds the commands it runs from `$NMHOME` directly — visible with
+`strings`:
+
+```
+%s/bin/estimate_PCC -p %s/data/all.covered.50peps.pseudo ...
+```
+
+so it looks in `<tool>/bin/`, which the archive does not contain. The package
+contradicts itself; nothing has "moved". The wrapper still starts, so the run
+looks healthy until every prediction fails with:
 
 ```
 sh: 1: .../netMHCIIpan-4.3/bin/estimate_PCC: not found
 ```
 
-Check whether the binaries are simply in the other directory, and if they are,
-one symlink is the whole fix:
+`./install.sh --only tools` creates the missing `bin -> Linux_x86_64/bin`
+symlink for you. By hand it is one command:
 
 ```bash
-ls resources/tools/netMHCIIpan-4.3/Linux_x86_64/bin/      # are they here?
 cd resources/tools/netMHCIIpan-4.3 && ln -s Linux_x86_64/bin bin
 ```
 
-If that directory is empty or missing the helper, the archive is incomplete and
-the download has to be repeated. Please also
-[open an issue](https://github.com/vedasoham/veda_epitope-discovery/issues) with
-the version string, so the table above can be updated.
+If `Linux_x86_64/bin/` is itself empty or missing the helper, the archive is
+incomplete and the download has to be repeated.
+
+**A `TMPDIR` longer than the binary's path buffer.** That buffer is sized per
+sub-release: NetMHCpan 4.2b accepted a `TMPDIR` of 63 characters, 4.2f only 33.
+Past the limit every prediction dies with:
+
+```
+*** buffer overflow detected ***: terminated
+```
+
+Only `TMPDIR` counts — the input file may sit at any depth. `./install.sh --only
+configure` points these two wrappers at `/tmp` whenever `~/.veda/tmp` would be
+too long, so this should not reach you; if you set `TMPDIR` yourself, keep it
+short.
+
+Please [open an issue](https://github.com/vedasoham/veda_epitope-discovery/issues)
+with the version string when a release fails in some way not described here, so
+the table above can be updated.
 
 ### Where to put them
 
