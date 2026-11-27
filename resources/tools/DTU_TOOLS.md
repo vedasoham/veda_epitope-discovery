@@ -40,12 +40,12 @@ is no ARM build of these tools, so Apple Silicon and ARM servers cannot run
 them.
 
 | Tool | What VEDA uses it for | Request from | Archive you will receive |
-|---|---|---|---|
-| **NetMHCpan 4.2** | MHC class-I binding prediction | [NetMHCpan-4.2](https://services.healthtech.dtu.dk/services/NetMHCpan-4.2/) | `netMHCpan-4.2.Linux.tar.gz` |
-| **NetMHCIIpan 4.3** | MHC class-II binding prediction | [NetMHCIIpan-4.3](https://services.healthtech.dtu.dk/services/NetMHCIIpan-4.3/) | `netMHCIIpan-4.3.Linux.tar.gz` |
-| **GibbsCluster 2.0** | clustering peptides into binding motifs | [GibbsCluster-2.0](https://services.healthtech.dtu.dk/services/GibbsCluster-2.0/) | `gibbscluster-2.0*.Linux.tar.gz` |
-| **Seq2Logo 2.2** | sequence logos for the clusters | [Seq2Logo-2.0](https://services.healthtech.dtu.dk/services/Seq2Logo-2.0/) | `seq2logo-2.2*.tar.gz` |
-| **DeepLoc 2.1** | subcellular localisation | [DeepLoc-2.1](https://services.healthtech.dtu.dk/services/DeepLoc-2.1/) | `deeploc-2.1.All.tar.gz` |
+|:---:|:---:|:---:|:---:|
+| **NetMHCpan 4.2** | MHC class-I binding prediction | [NetMHCpan-4.2f](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=netMHCpan&version=4.2&packageversion=4.2f&platform=Linux) | `netMHCpan-4.2f.Linux.tar.gz` |
+| **NetMHCIIpan 4.3** | MHC class-II binding prediction | [NetMHCIIpan-4.3k](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=netMHCIIpan&version=4.3&packageversion=4.3k&platform=Linux) | `netMHCIIpan-4.3k.Linux.tar.gz` |
+| **GibbsCluster 2.0** | clustering peptides into binding motifs | [GibbsCluster-2.0f](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=gibbscluster&version=2.0&packageversion=2.0f&platform=Linux) | `gibbscluster-2.0f.Linux.tar.gz` |
+| **Seq2Logo 2.2** | sequence logos for the clusters | [Seq2Logo-2.2b](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=seq2logo&version=2.2&packageversion=2.2b&platform=all) | `seq2logo-2.2b.all.tar.gz` |
+| **DeepLoc 2.1** | subcellular localisation | [DeepLoc-2.1](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=deeploc&version=2.1&packageversion=2.1&platform=All) | `deeploc-2.1.All.tar.gz` |
 
 Each page has a **Downloads** tab with an academic request form. DTU emails a
 link. If you are not at a publicly funded academic institution, the pages
