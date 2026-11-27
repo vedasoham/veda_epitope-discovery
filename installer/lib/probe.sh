@@ -281,18 +281,27 @@ veda::_probe_filesystem() {
     (( VEDA_PROBE_SYMLINK_OK )) ||
         veda::_hazard "cannot create symlinks under $VEDA_HOME ($VEDA_PROBE_FSTYPE); conda environments require them"
 
-    # The DTU binaries have a 64-byte buffer for the scratch directory path.
-    # Measured against netMHCpan 4.2: a TMPDIR of 63 characters produces
-    # predictions, 64 dies with "*** buffer overflow detected ***" and a core
-    # dump. glibc's _FORTIFY_SOURCE turns the overrun into an abort, so on a
-    # modern distro this is a hard crash rather than silent corruption.
+    # The DTU binaries hold the scratch directory path in a fixed-size buffer,
+    # and the size is NOT constant across sub-releases:
     #
-    # The launcher points TMPDIR at $VEDA_HOME/tmp, so the length of VEDA_HOME
-    # decides whether NetMHCpan, NetMHCIIpan and GibbsCluster work at all.
+    #   netMHCpan 4.2b   TMPDIR of 63 characters works, 64 aborts
+    #   netMHCpan 4.2f   TMPDIR of 33 characters works, 34 aborts
+    #   netMHCIIpan 4.3k no limit observed at 70
+    #
+    # glibc's _FORTIFY_SOURCE turns the overrun into an abort, so this is a
+    # hard crash ("*** buffer overflow detected ***") and not silent
+    # corruption. Only TMPDIR is measured; the input file may sit at any depth.
+    #
+    # The launcher points TMPDIR at $VEDA_HOME/tmp. Because the tightest known
+    # ceiling (33) is below what a reasonable VEDA_HOME can produce,
+    # configure.sh redirects the NetMHCpan and NetMHCIIpan wrappers to /tmp
+    # when $VEDA_HOME/tmp would be too long -- so this probe is a backstop for
+    # the remaining tools, not the only line of defence. It stays at the
+    # loosest ceiling: beyond that, nothing can be rescued by redirection.
     VEDA_PROBE_TMPDIR="$VEDA_HOME/tmp"
     VEDA_PROBE_TMPDIR_LEN=${#VEDA_PROBE_TMPDIR}
     if (( VEDA_PROBE_TMPDIR_LEN > 63 )); then
-        veda::_hazard "VEDA_HOME is too deep: the scratch path '$VEDA_PROBE_TMPDIR' is $VEDA_PROBE_TMPDIR_LEN characters, and the DTU tools (NetMHCpan, NetMHCIIpan, GibbsCluster) crash above 63.
+        veda::_hazard "VEDA_HOME is too deep: the scratch path '$VEDA_PROBE_TMPDIR' is $VEDA_PROBE_TMPDIR_LEN characters, and the DTU tools (NetMHCpan, NetMHCIIpan, GibbsCluster) crash above 63 -- some sub-releases as low as 33.
       Install with a shorter VEDA_HOME, for example:
           VEDA_HOME=~/.veda ./install.sh"
     else

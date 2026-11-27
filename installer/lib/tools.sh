@@ -416,6 +416,20 @@ veda::_tool_from_staging() {
     local src="$tmp"
     (( ${#inner[@]} == 1 )) && src="${inner[0]}"
 
+    # ... but not when stripping it would put the sentinel out of reach.
+    #
+    # DeepLoc 2.1 ships a single top-level deeploc2_package/, and the install
+    # needs it kept at deeploc-2.1.All/deeploc2_package/ -- envs.sh pip-installs
+    # exactly that path. Stripping flattened it to deeploc-2.1.All/setup.py,
+    # after which _tool_present reported the tool missing even though every
+    # file had been copied correctly, and the only clue was a warning about a
+    # path the user had no reason to think was wrong.
+    if [[ -n "$sentinel" && "$sentinel" != '-' && "$src" != "$tmp" ]] \
+       && [[ ! -e "$src/$sentinel" && -e "$tmp/$sentinel" ]]; then
+        log_debug "$id: keeping the archive's top-level directory for $sentinel"
+        src="$tmp"
+    fi
+
     mkdir -p "$path"
     if ! run "install $id files" cp -a "$src/." "$path/"; then
         log_err "could not copy $id into $path"; rm -rf "$tmp"; return 1

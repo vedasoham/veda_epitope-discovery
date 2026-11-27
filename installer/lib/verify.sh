@@ -23,7 +23,7 @@ veda::verify() {
 
     VEDA_VERIFY_WORK="$VEDA_HOME/tmp/verify-$$"
     mkdir -p "$VEDA_VERIFY_WORK"
-    trap 'rm -rf "${VEDA_VERIFY_WORK:-}"' RETURN
+    trap 'veda::_verify_cleanup' RETURN
 
     veda::_mk_fixtures
 
@@ -101,6 +101,35 @@ skip() { printf '%s' "$1"; return 77; }
 
 # --- fixtures ---------------------------------------------------------------
 
+# Keep the work directory when a check failed.
+#
+# Each check reports only the LAST line of its tool's log (see _t_raghava).
+# For a Python traceback that is the exception message alone -- the frames
+# naming the failing line are above it, and are exactly what a diagnosis
+# needs. Deleting the directory unconditionally destroyed the only copy of
+# the evidence for the failure it had just reported, which is how
+# "TypeError: cannot concatenate object of type '<class 'list'>'" reached two
+# separate bug reports with no way to tell which line raised it.
+#
+# On a clean run nothing is kept. Previously-kept directories are pruned
+# after a week so this cannot grow without bound.
+veda::_verify_cleanup() {
+    local w=${VEDA_VERIFY_WORK:-}
+    [[ -n "$w" && -d "$w" ]] || return 0
+
+    if (( ${VEDA_CHK_FAIL:-0} > 0 )); then
+        log_warn "the failing checks' tool logs have been kept in:"
+        log_warn "  $w"
+        log_warn "  send *.log from there when reporting a tool failure"
+        # Prune anything kept by an earlier run more than a week ago.
+        find "$VEDA_HOME/tmp" -maxdepth 1 -type d -name 'verify-*' \
+            ! -path "$w" -mtime +7 -exec rm -rf {} + 2>/dev/null || true
+        return 0
+    fi
+
+    rm -rf "$w"
+}
+
 veda::_mk_fixtures() {
     local w=$VEDA_VERIFY_WORK
     # 9-mers: valid input for MHC-I, AlgPred, ToxinPred, IL2Pred.
@@ -124,10 +153,35 @@ veda::_mk_fixtures() {
 import sys
 import pandas as pd
 
+# Monkey-patch DataFrame.append, which pandas removed in 2.0.
+#
+# This has to reproduce pandas 1.5 semantics, not merely forward to concat():
+# when `other` was a list that did not hold DataFrames, pandas wrapped it in
+# DataFrame(other) first. Leaving that step out makes every
+#     df.append(other_df.values.tolist())
+# raise the TypeError "cannot concatenate object of type list; only Series and
+# DataFrame objs are valid", which reads like a bug in the tool and is really a
+# gap in this shim. IFNepitope2 began calling append that way upstream, and the
+# failure reached two separate bug reports before it was traced back to here.
 if not hasattr(pd.DataFrame, "append"):
     def append(self, other, ignore_index=False, verify_integrity=False, sort=False):
-        from pandas import concat
-        parts = [self] + list(other) if isinstance(other, (list, tuple)) else [self, other]
+        from pandas import DataFrame, Index, Series, concat
+        if isinstance(other, dict):
+            if not ignore_index:
+                raise TypeError("Can only append a dict if ignore_index=True")
+            other = Series(other)
+        if isinstance(other, Series):
+            if other.name is None and not ignore_index:
+                raise TypeError("Can only append a Series if ignore_index=True"
+                                " or if the Series has a name")
+            index = Index([other.name], name=self.index.name)
+            other = other.to_frame().T.infer_objects().rename_axis(index.names)
+        elif isinstance(other, (list, tuple)):
+            if len(other) and not isinstance(other[0], DataFrame):
+                other = DataFrame(other)
+                if self.index.name is not None and not ignore_index:
+                    other.index.name = self.index.name
+        parts = [self, *other] if isinstance(other, (list, tuple)) else [self, other]
         return concat(parts, ignore_index=ignore_index,
                       verify_integrity=verify_integrity, sort=sort)
     pd.DataFrame.append = append
@@ -286,12 +340,30 @@ veda::_t_perl() {
 #
 # So: match only real result rows, which begin with a position number followed
 # by the allele, and name the two failure modes explicitly.
+# A short TMPDIR for the NetMHC* tools.
+#
+# These binaries build their scratch path into a fixed-size buffer, and its
+# size changes between sub-releases: 4.2b tolerated a TMPDIR of 63 characters,
+# 4.2f only 33 (bisected on 4.2f -- 33 works, 34 aborts with "*** buffer
+# overflow detected ***: terminated"). NetMHCIIpan 4.3k showed no limit at 70.
+#
+# Only TMPDIR matters; the input file may sit at any depth (verified by running
+# every short/long combination of the two). The verify work directory is
+# $VEDA_HOME/tmp/verify-NNNNNN, which is 34 characters for a plain ~/.veda, so
+# passing it straight to the tool overflowed by one character on essentially
+# every machine -- and the doctor then reported a perfectly good NetMHCpan as
+# "crashed: path too long". Hand the tool a short directory of its own, which
+# stays 20 characters however long $VEDA_HOME happens to be.
+veda::_netmhc_tmpdir() {
+    mktemp -d /tmp/veda-nmp.XXXXXX 2>/dev/null
+}
+
 veda::_netmhc_diagnose() {
-    local out=$1
+    local out=$1 tmp=${2:-}
     if printf '%s' "$out" | grep -q 'buffer overflow'; then
-        # Hardcoded 64-byte path buffer. Measured: a TMPDIR of 63 characters
-        # works, 64 aborts. See the path-length check in probe.sh.
-        echo "crashed: path too long (TMPDIR must be 63 characters or fewer)"
+        # The ceiling is sub-release specific, so report the length actually
+        # used instead of a single number that is wrong for half the releases.
+        echo "crashed: buffer overflow building a scratch path (TMPDIR was ${#tmp} characters; NetMHCpan 4.2f accepts at most 33)"
         return 0
     fi
     if printf '%s' "$out" | grep -q 'Unable to open'; then
@@ -307,13 +379,15 @@ veda::_netmhc_diagnose() {
 veda::_t_netmhcpan() {
     local d="$VEDA_TOOLS_DIR/netMHCpan-4.2" w=$VEDA_VERIFY_WORK
     [[ -x "$d/netMHCpan" ]] || skip "not installed" || return 77
-    local out n
-    out=$(cd "$d" && TMPDIR="$w" ./netMHCpan -p "$w/pep9.txt" -a HLA-A02:01 2>&1) || true
+    local out n t
+    t=$(veda::_netmhc_tmpdir) || t=$w
+    out=$(cd "$d" && TMPDIR="$t" ./netMHCpan -p "$w/pep9.txt" -a HLA-A02:01 2>&1) || true
+    [[ "$t" != "$w" ]] && rm -rf "$t"
 
     # A real row looks like:  1 HLA-A*02:01  SIINFEKLL  SIINFEKLL  0 ...
     n=$(printf '%s' "$out" | grep -cE '^[[:space:]]*[0-9]+[[:space:]]+HLA-[A-Z]\*[0-9]' || true)
     if (( n == 0 )); then
-        veda::_netmhc_diagnose "$out"
+        veda::_netmhc_diagnose "$out" "$t"
         return 1
     fi
     echo "predicted $n peptide-allele rows"
@@ -322,15 +396,17 @@ veda::_t_netmhcpan() {
 veda::_t_netmhciipan() {
     local d="$VEDA_TOOLS_DIR/netMHCIIpan-4.3" w=$VEDA_VERIFY_WORK
     [[ -x "$d/netMHCIIpan" ]] || skip "not installed" || return 77
-    local out n
-    out=$(cd "$d" && TMPDIR="$w" ./netMHCIIpan -f "$w/pep15.fa" -a DRB1_0101 2>&1) || true
+    local out n t
+    t=$(veda::_netmhc_tmpdir) || t=$w
+    out=$(cd "$d" && TMPDIR="$t" ./netMHCIIpan -f "$w/pep15.fa" -a DRB1_0101 2>&1) || true
+    [[ "$t" != "$w" ]] && rm -rf "$t"
 
     # A real row looks like:  1  DRB1_0101  AAGIGILTVILGVLL  3  IGILTVILG ...
     # The banner also contains "DRB1_0101", so the position prefix is what
     # distinguishes a result from an echo of the request.
     n=$(printf '%s' "$out" | grep -cE '^[[:space:]]*[0-9]+[[:space:]]+DRB1_' || true)
     if (( n == 0 )); then
-        veda::_netmhc_diagnose "$out"
+        veda::_netmhc_diagnose "$out" "$t"
         return 1
     fi
     echo "predicted $n MHC-II binding rows"

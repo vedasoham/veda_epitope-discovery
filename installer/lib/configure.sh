@@ -100,13 +100,30 @@ veda::_cfg_patch_wrappers() {
     local tmpdir="$VEDA_HOME/tmp"
     mkdir -p "$tmpdir"
 
+    # NetMHCpan builds its scratch path into a fixed-size buffer, and the size
+    # varies by sub-release: 4.2b accepted a TMPDIR of 63 characters, 4.2f only
+    # 33 (bisected on 4.2f -- 33 works, 34 aborts with "*** buffer overflow
+    # detected ***"). Only TMPDIR counts; the input file may sit anywhere.
+    #
+    # A plain ~/.veda/tmp is short enough, but a longer account name is not:
+    # /home/firstname.lastname/.veda/tmp is already 34. Every prediction would
+    # then fail with a message naming neither the tool nor the path, in real
+    # runs and not just in the doctor. Fall back to /tmp for these two
+    # wrappers so the limit cannot break an install we could have fixed here.
+    local nm_tmpdir=$tmpdir
+    if (( ${#nm_tmpdir} > 33 )); then
+        nm_tmpdir=/tmp
+        log_warn "TMPDIR is ${#tmpdir} characters ($tmpdir); NetMHCpan 4.2f accepts 33"
+        log_warn "the NetMHCpan/NetMHCIIpan wrappers will use /tmp instead"
+    fi
+
     local f
     # NetMHCpan 4.2
     f="$VEDA_TOOLS_DIR/netMHCpan-4.2/netMHCpan"
     if [[ -f "$f" ]]; then
         selfpath_patch "$f" NMHOME && log_ok "netMHCpan NMHOME resolves from the wrapper"
         # TMPDIR sits inside an `if` block, so only patch when the line exists.
-        setenv_patch "$f" TMPDIR "$tmpdir" >/dev/null 2>&1 && log_debug "patched netMHCpan TMPDIR"
+        setenv_patch "$f" TMPDIR "$nm_tmpdir" >/dev/null 2>&1 && log_debug "patched netMHCpan TMPDIR"
         chmod u+x "$f"
     else
         log_warn "netMHCpan wrapper not found; skipping (tool not installed)"
@@ -116,7 +133,7 @@ veda::_cfg_patch_wrappers() {
     f="$VEDA_TOOLS_DIR/netMHCIIpan-4.3/netMHCIIpan"
     if [[ -f "$f" ]]; then
         selfpath_patch "$f" NMHOME && log_ok "netMHCIIpan NMHOME resolves from the wrapper"
-        setenv_patch "$f" TMPDIR "$tmpdir" >/dev/null 2>&1 && log_debug "patched netMHCIIpan TMPDIR"
+        setenv_patch "$f" TMPDIR "$nm_tmpdir" >/dev/null 2>&1 && log_debug "patched netMHCIIpan TMPDIR"
         chmod u+x "$f"
     else
         log_warn "netMHCIIpan wrapper not found; skipping (tool not installed)"
